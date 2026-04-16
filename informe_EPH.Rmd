@@ -1,0 +1,185 @@
+---
+title: "Análisis descriptivo de características sociodemográficas y económicas de la población adulta urbana en Argentina"
+subtitle: "Encuesta Permanente de Hogares – 3er Trimestre 2025"
+alumnos: "Agustín Mardquart, Fabián Álvarez, Damián Turco"
+date: "TUIA – Probabilidad y Estadística 2026"
+output:
+  pdf_document:
+    latex_engine: xelatex
+    number_sections: true
+fontsize: 11pt
+geometry: margin=2.5cm
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+library(tidyverse)
+library(readxl)
+library(knitr)
+
+ruta <- "/Users/fabianalvarez/Documents/TUIA/Probabilidad-y-Estadistica/TP/EPH_usu_3_Trim_2025_xls/usu_individual_T325.xlsx"
+ind <- read_excel(ruta)
+
+datos <- ind %>%
+  filter(CH06 >= 18, ESTADO %in% c(1, 2, 3), NIVEL_ED %in% 1:7) %>%
+  mutate(
+    Sexo = factor(CH04, levels = c(1, 2), labels = c("Varón", "Mujer")),
+    Nivel_educativo = factor(NIVEL_ED, levels = 1:7,
+                             labels = c("Primaria inc.", "Primaria comp.",
+                                        "Secundaria inc.", "Secundaria comp.",
+                                        "Superior inc.", "Superior comp.",
+                                        "Sin instrucción")),
+    Edad = as.numeric(CH06),
+    IPCF = as.numeric(IPCF)
+  )
+
+datos_ingreso <- datos %>% filter(IPCF > 0)
+
+tabla_sexo <- datos %>% count(Sexo) %>%
+  mutate(Porcentaje = round(n / sum(n) * 100, 1))
+
+tabla_edu <- datos %>% count(Nivel_educativo) %>%
+  mutate(Porcentaje = round(n / sum(n) * 100, 1)) %>%
+  arrange(desc(n))
+
+mediana_edu <- datos_ingreso %>%
+  group_by(Nivel_educativo) %>%
+  summarise(Mediana_IPCF = median(IPCF), n = n())
+```
+
+# Introducción y problema estadístico
+
+## Unidad de análisis y población
+
+La **unidad de análisis** es la persona de 18 años o más residente en un aglomerado urbano de Argentina. La **población objetivo** comprende al conjunto de adultos que habitan en los 31 aglomerados urbanos relevados por la Encuesta Permanente de Hogares (EPH) del INDEC durante el tercer trimestre de 2025.
+
+## Variables analizadas
+
+Se seleccionaron cuatro variables que permiten caracterizar la situación sociodemográfica y económica de la población adulta urbana:
+
+| Variable | Tipo | Fuente (columna) | Escala |
+|---|---|---|---|
+| Sexo | Cualitativa nominal | `CH04` | Varón / Mujer |
+| Nivel educativo alcanzado | Cualitativa ordinal | `NIVEL_ED` | 7 categorías ordenadas |
+| Edad | Cuantitativa discreta | `CH06` | Años cumplidos |
+| Ingreso per cápita familiar (IPCF) | Cuantitativa continua | `IPCF` | Pesos corrientes |
+
+El **IPCF** es el ingreso total del hogar dividido por la cantidad de miembros, e incluye ingresos laborales y no laborales de todos los integrantes.
+
+## Parámetros de interés
+
+Para las variables cualitativas se estiman **proporciones poblacionales** ($\pi$). Para las cuantitativas se estiman la **media** ($\mu$), la **mediana**, la **desviación estándar** ($\sigma$) y los **cuartiles** ($Q_1$, $Q_3$).
+
+---
+
+# Descripción de la muestra
+
+La EPH es una encuesta probabilística, de diseño **bietápico por conglomerados** con rotación de paneles. Las unidades primarias de muestreo son los radios censales y las secundarias son las viviendas. El diseño garantiza representatividad estadística de los aglomerados urbanos relevados.
+
+Para los fines de este trabajo se supone **aleatoriedad simple** en la selección de la muestra, lo que permite aplicar directamente los estimadores clásicos de parámetros poblacionales.
+
+La muestra analizada comprende **`r nrow(datos)` personas adultas** (18 años o más) con entrevista realizada y nivel educativo informado. Para el análisis de ingresos se trabajó con el subconjunto de **`r nrow(datos_ingreso)` personas** con IPCF mayor a cero, excluyendo hogares sin ingreso declarado.
+
+---
+
+# Análisis descriptivo
+
+## Sexo
+
+```{r tabla-sexo}
+kable(tabla_sexo, col.names = c("Sexo", "n", "Porcentaje (%)"),
+      caption = "Distribución de la muestra por sexo")
+```
+
+La muestra presenta una leve mayoría de mujeres (`r tabla_sexo$Porcentaje[tabla_sexo$Sexo == "Mujer"]`%) respecto de varones (`r tabla_sexo$Porcentaje[tabla_sexo$Sexo == "Varón"]`%), lo que refleja la estructura demográfica de la población urbana adulta argentina.
+
+## Nivel educativo alcanzado
+
+```{r tabla-edu}
+kable(tabla_edu %>% arrange(factor(Nivel_educativo,
+        levels = c("Sin instrucción","Primaria inc.","Primaria comp.",
+                   "Secundaria inc.","Secundaria comp.","Superior inc.","Superior comp."))),
+      col.names = c("Nivel educativo", "n", "Porcentaje (%)"),
+      caption = "Distribución de la muestra por nivel educativo alcanzado")
+```
+
+```{r grafico-edu, fig.height=3.5, fig.width=6.5, fig.cap="Distribución por nivel educativo alcanzado (EPH 3T2025)"}
+ggplot(tabla_edu, aes(x = reorder(Nivel_educativo, Porcentaje), y = Porcentaje)) +
+  geom_col(fill = "#2C7BB6") +
+  geom_text(aes(label = paste0(Porcentaje, "%")), hjust = -0.1, size = 3) +
+  coord_flip() +
+  scale_y_continuous(limits = c(0, 30)) +
+  labs(x = NULL, y = "Porcentaje (%)") +
+  theme_minimal(base_size = 10)
+```
+
+La categoría más frecuente es Secundaria completa. Se observa que la proporción de personas sin instrucción es marginal, mientras que los niveles superiores (terciario/universitario) concentran una porción relevante de la población adulta urbana.
+
+## Edad
+
+```{r estadisticos-edad}
+resumen_edad <- datos %>%
+  summarise(Media = round(mean(Edad), 1), Mediana = median(Edad),
+            `Desv. estándar` = round(sd(Edad), 1),
+            Mínimo = min(Edad), Q1 = quantile(Edad, 0.25),
+            Q3 = quantile(Edad, 0.75), Máximo = max(Edad))
+
+kable(resumen_edad, caption = "Estadísticos descriptivos de la edad (en años)")
+```
+
+```{r histograma-edad, fig.height=3, fig.width=6, fig.cap="Distribución de edades. La línea punteada indica la media."}
+ggplot(datos, aes(x = Edad)) +
+  geom_histogram(binwidth = 5, fill = "#2C7BB6", color = "white") +
+  geom_vline(xintercept = mean(datos$Edad), color = "#D7191C",
+             linetype = "dashed", linewidth = 0.8) +
+  annotate("text", x = mean(datos$Edad) + 2, y = Inf,
+           label = paste0("Media: ", round(mean(datos$Edad), 1), " años"),
+           vjust = 2, hjust = 0, color = "#D7191C", size = 3) +
+  labs(x = "Edad (años)", y = "Frecuencia") +
+  theme_minimal(base_size = 10)
+```
+
+La distribución de edades es aproximadamente simétrica con leve asimetría positiva. La media (`r round(mean(datos$Edad), 1)` años) y la mediana (`r median(datos$Edad)` años) son próximas, indicando que no hay valores extremos que distorsionen la media. La desviación estándar de `r round(sd(datos$Edad), 1)` años refleja la amplia dispersión esperable en una población adulta.
+
+## Ingreso per cápita familiar (IPCF)
+
+```{r estadisticos-ipcf}
+resumen_ipcf <- datos_ingreso %>%
+  summarise(Media = round(mean(IPCF)), Mediana = round(median(IPCF)),
+            `Desv. estándar` = round(sd(IPCF)),
+            Q1 = round(quantile(IPCF, 0.25)), Q3 = round(quantile(IPCF, 0.75)),
+            Máximo = round(max(IPCF)))
+
+kable(resumen_ipcf, format.args = list(big.mark = "."),
+      caption = "Estadísticos descriptivos del IPCF en pesos (personas con IPCF > 0, n = 24.543)")
+```
+
+```{r boxplot-ipcf, fig.height=3, fig.width=5.5, fig.cap="Distribución del IPCF por sexo (se excluye el 1% superior)."}
+ggplot(datos_ingreso, aes(x = Sexo, y = IPCF, fill = Sexo)) +
+  geom_boxplot(outlier.alpha = 0.15, outlier.size = 0.6) +
+  scale_y_continuous(labels = scales::comma,
+                     limits = c(0, quantile(datos_ingreso$IPCF, 0.99))) +
+  scale_fill_manual(values = c("Varón" = "#2C7BB6", "Mujer" = "#D7191C")) +
+  labs(x = NULL, y = "IPCF (pesos)") +
+  theme_minimal(base_size = 10) +
+  theme(legend.position = "none")
+```
+
+La distribución del IPCF presenta **marcada asimetría positiva**: la media ($\approx$ \$660.000) supera ampliamente a la mediana ($\approx$ \$477.000), lo que indica la presencia de valores extremos hacia la derecha (ingresos muy altos). Esto es habitual en variables de ingreso y sugiere que la mediana es un estimador más representativo de la tendencia central que la media.
+
+Se observa una **brecha de ingreso por sexo**: la mediana del IPCF de los varones ($\approx$ \$500.000) supera en un 8,7% a la de las mujeres ($\approx$ \$460.000).
+
+---
+
+# Conclusión
+
+Este análisis es de carácter **preliminar**: los estadísticos obtenidos son estimaciones muestrales de los parámetros de la población adulta urbana argentina, a partir de una muestra de 34.336 personas relevadas por la EPH en el tercer trimestre de 2025.
+
+Los principales hallazgos son:
+
+- La muestra presenta una composición levemente mayoritaria de mujeres (53,2%), coherente con la estructura demográfica urbana.
+- La edad promedio de la población adulta se ubica en torno a los 45 años, con una distribución aproximadamente simétrica.
+- El ingreso per cápita familiar muestra una distribución fuertemente sesgada hacia la derecha, con mediana de \$477.000 y media de \$660.000. La disparidad entre ambas medidas revela la influencia de ingresos extremos en la parte alta de la distribución.
+- Se observa una brecha de ingreso por sexo del orden del 8,7% en favor de los varones.
+
+Para obtener conclusiones definitivas sobre la población sería necesario realizar inferencia estadística formal (intervalos de confianza, pruebas de hipótesis) y considerar el diseño muestral complejo de la EPH, lo que excede los alcances de este trabajo.
