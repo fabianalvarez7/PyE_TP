@@ -1,8 +1,7 @@
 # ============================================================
-# TP Probabilidad y Estadística – PyE TUIA 2026
-# Dataset: EPH Continua – 4° Trimestre 2025 (INDEC)
-# Tema: Situación laboral de los ocupados en Argentina
-# Descarga automática vía paquete {eph}
+# Trabajo Práctico Probabilidad y Estadística TUIA 2026
+# Dataset: EPH Individual – 4° Trimestre 2025 (INDEC).
+# Tema: Situación laboral en Argentina.
 # ============================================================
 
 library(eph)
@@ -25,41 +24,34 @@ cat("Columnas disponibles:", ncol(ind), "\n")
 # ============================================================
 # 2. PREPARACIÓN Y LIMPIEZA
 # ============================================================
-# Población de interés: OCUPADOS (ESTADO == 1)
-#
-# Variables utilizadas:
-#
-# CAT_OCUP → Categoría ocupacional (pág. del registro EPH)
+# Población de interés: Personas con trabajo → OCUPADOS (Campo: ESTADO == 1)
+
+# Variables cualitativas:
+
+# CAT_OCUP → Categoría ocupacional
 #   1 = Patrón / empleador
 #   2 = Cuenta propia
 #   3 = Obrero / empleado (relación de dependencia)
 #   4 = Trabajador familiar sin remuneración
-#
-# PP07H → ¿Le descuentan aportes jubilatorios? (solo asalariados, CAT_OCUP == 3)
-#   1 = Sí  → asalariado formal
-#   2 = No  → asalariado informal
-#
-# PP07G2 → ¿Está inscripto como monotributista? (cuenta propia y patrón)
-#   1 = Sí  → cuenta propia/patrón monotributista
-#   0 / NA  → no inscripto (informal)
-#
-# Formalidad laboral: variable construida que combina PP07H y PP07G2
-#   - Asalariado formal       : CAT_OCUP == 3 & PP07H == 1
-#   - Asalariado informal     : CAT_OCUP == 3 & PP07H == 2
-#   - Monotributista          : CAT_OCUP %in% c(1,2) & PP07G2 == 1
-#   - Cuenta propia/patrón sin registro : resto de CAT_OCUP %in% c(1,2)
-#   - Sin dato                : CAT_OCUP == 4 u otros
-#
+
+# EMPLEO → Condición de formalidad laboral (asalariados y trabajadores independientes)
+#   1 = Formal
+#   2 = Informal
+#   9 = Ns/Nr
+
+# Variables cuantitativas:
+
 # P21 → Ingreso de la ocupación principal (en pesos)
-#
+
 # PP3E_TOT → Total de horas trabajadas en la semana en la ocupación principal
+
 
 datos <- ind %>%
   filter(ESTADO == 1) %>%                          # solo ocupados
   filter(CAT_OCUP %in% 1:4) %>%                    # categoría informada
   filter(!is.na(P21), P21 >= 0) %>%                # ingreso disponible
   filter(!is.na(PP3E_TOT), PP3E_TOT > 0,
-         PP3E_TOT != 999) %>%                        # horas disponibles (999 = sin dato)
+         PP3E_TOT != 999) %>%                      # horas disponibles (999 = sin dato)
   mutate(
     # Variable 1: Categoría ocupacional
     Cat_ocup = factor(CAT_OCUP,
@@ -69,20 +61,14 @@ datos <- ind %>%
                                  "Asalariado",
                                  "Trab. familiar s/rem.")),
 
-    # Variable 2: Formalidad laboral (variable construida)
+    # Variable 2: Formalidad laboral (Campo: EMPLEO)
     Formalidad = case_when(
-      CAT_OCUP == 3 & PP07H  == 1 ~ "Asalariado formal",
-      CAT_OCUP == 3 & PP07H  == 2 ~ "Asalariado informal",
-      CAT_OCUP %in% c(1, 2) & PP07G2 == 1 ~ "Monotributista",
-      CAT_OCUP %in% c(1, 2)               ~ "Cuenta propia/patrón sin registro",
-      TRUE ~ "Sin dato"
-    ) %>% factor(levels = c("Asalariado formal",
-                             "Asalariado informal",
-                             "Monotributista",
-                             "Cuenta propia/patrón sin registro",
-                             "Sin dato")),
+      EMPLEO == 1 ~ "Formal",
+      EMPLEO == 2 ~ "Informal",
+      TRUE        ~ "Sin dato"
+    ) %>% factor(levels = c("Formal", "Informal", "Sin dato")),
 
-    # Variable 3: Ingreso de la ocupación principal
+    # Variable 3: Ingreso en pesos de la ocupación principal
     Ingreso = as.numeric(P21),
 
     # Variable 4: Horas semanales trabajadas
@@ -102,12 +88,6 @@ tabla_cat <- datos %>%
 
 cat("\n=== CATEGORÍA OCUPACIONAL ===\n")
 print(tabla_cat)
-
-# Cuántos monotributistas hay dentro de cuenta propia + patrón
-n_mono <- datos %>% filter(Formalidad == "Monotributista") %>% nrow()
-n_cp   <- datos %>% filter(Cat_ocup %in% c("Cuenta propia", "Patrón/empleador")) %>% nrow()
-cat(sprintf("\nMonotributistas dentro de cuenta propia/patrón: %d de %d (%.1f%%)\n",
-            n_mono, n_cp, n_mono / n_cp * 100))
 
 # --- 3.2 Formalidad laboral ---
 tabla_form <- datos %>%
@@ -227,7 +207,7 @@ g2 <- ggplot(tabla_form %>% filter(Formalidad != "Sin dato"),
   geom_col(fill = col_azul) +
   geom_text(aes(label = paste0(Porcentaje, "%")), hjust = -0.1, size = 3.5) +
   coord_flip() +
-  scale_y_continuous(limits = c(0, 60)) +
+  scale_y_continuous(limits = c(0, 80)) +
   labs(title = "Distribución por condición de formalidad laboral",
        subtitle = "Ocupados – EPH 4T2025",
        x = NULL, y = "Porcentaje (%)") +
@@ -287,16 +267,3 @@ ggsave("graficos/g5_horas.png", g5, width = 6, height = 4, dpi = 150)
 
 cat("\nGráficos guardados en graficos/\n")
 cat("Análisis completado.\n")
-
-
-
-ind %>%
-  filter(CAT_OCUP %in% c(1, 2)) %>%
-  count(PP07G2)
-
-datos %>% count(PP3E_TOT) %>% arrange(desc(PP3E_TOT)) %>% head(20)
-
-ind %>%
-  filter(CAT_OCUP %in% c(1, 2)) %>%
-  select(starts_with("PP07G")) %>%
-  summary()
