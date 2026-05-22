@@ -3,9 +3,14 @@
 # Dataset: EPH Individual – 4° Trimestre 2025 (INDEC).
 # Tema: Situación laboral en Argentina.
 # ============================================================
-
+install.packages('eph')
+install.packages('tidyverse')
+install.packages(ggplot2)
 library(eph)
 library(tidyverse)
+library(ggplot2)
+
+options(scipen = 999) # Elimina la notación científica
 
 # ============================================================
 # 1. DESCARGA DE DATOS
@@ -48,13 +53,13 @@ cat("Columnas disponibles:", ncol(ind), "\n")
 
 datos <- ind %>%
   filter(ESTADO == 1) %>%                          # solo ocupados
-  filter(CAT_OCUP %in% 1:4) %>%                    # categoría informada
-  filter(!is.na(P21), P21 >= 0) %>%                # ingreso disponible
+  filter(CAT_OCUP %in% 1:4) %>%                    # categoría ocupacional
+  filter(!is.na(P21), P21 >= 0) %>%                # ingreso mensual
   filter(!is.na(PP3E_TOT), PP3E_TOT > 0,
-         PP3E_TOT != 999) %>%                      # horas disponibles (999 = sin dato)
+         PP3E_TOT != 999) %>%            # horas semanales trabajadas (999 = sin dato)
   mutate(
     # Variable 1: Categoría ocupacional
-    Cat_ocup = factor(CAT_OCUP,
+    Cat_ocupacional = factor(CAT_OCUP,
                       levels = c(1, 2, 3, 4),
                       labels = c("Patrón/empleador",
                                  "Cuenta propia",
@@ -69,11 +74,12 @@ datos <- ind %>%
     ) %>% factor(levels = c("Formal", "Informal", "Sin dato")),
 
     # Variable 3: Ingreso en pesos de la ocupación principal
-    Ingreso = as.numeric(P21),
+    Ingreso_mensual_ARS = as.numeric(P21),
 
     # Variable 4: Horas semanales trabajadas
-    Horas_sem = as.numeric(PP3E_TOT)
-  )
+    Horas_semanales = as.numeric(PP3E_TOT)
+  ) %>%
+  select(Cat_ocupacional, Formalidad, Ingreso_mensual_ARS, Horas_semanales)
 
 cat("\nOcupados con datos completos:", nrow(datos), "\n")
 
@@ -83,7 +89,7 @@ cat("\nOcupados con datos completos:", nrow(datos), "\n")
 
 # --- 3.1 Categoría ocupacional ---
 tabla_cat <- datos %>%
-  count(Cat_ocup) %>%
+  count(Cat_ocupacional) %>%
   mutate(Porcentaje = round(n / sum(n) * 100, 1))
 
 cat("\n=== CATEGORÍA OCUPACIONAL ===\n")
@@ -99,11 +105,12 @@ print(tabla_form)
 
 # --- 3.3 Formalidad dentro de cada categoría ocupacional ---
 cat("\n=== FORMALIDAD POR CATEGORÍA OCUPACIONAL ===\n")
-datos %>%
-  count(Cat_ocup, Formalidad) %>%
-  group_by(Cat_ocup) %>%
-  mutate(Pct = round(n / sum(n) * 100, 1)) %>%
-  print(n = 30)
+tabla_formalidad_por_cat <- datos %>%
+  count(Cat_ocupacional, Formalidad) %>%
+  group_by(Cat_ocupacional) %>%
+  mutate(Porcentaje = round(n / sum(n) * 100, 1))
+
+print(tabla_formalidad_por_cat, n = 30)
 
 # ============================================================
 # 4. ANÁLISIS DE VARIABLES CUANTITATIVAS
@@ -111,18 +118,18 @@ datos %>%
 
 # Nota: el análisis de ingresos y horas se hace sobre ocupados con P21 > 0
 # (se excluyen personas con ingreso cero en la ocupación principal)
-datos_ingreso <- datos %>% filter(Ingreso > 0)
+datos_ingreso <- datos %>% filter(Ingreso_mensual_ARS > 0)
 
 # --- 4.1 Ingreso de la ocupación principal (P21) ---
 resumen_ingreso <- datos_ingreso %>%
   summarise(
-    Media   = round(mean(Ingreso)),
-    Mediana = round(median(Ingreso)),
-    DS      = round(sd(Ingreso)),
-    Q1      = round(quantile(Ingreso, 0.25)),
-    Q3      = round(quantile(Ingreso, 0.75)),
-    Mínimo  = min(Ingreso),
-    Máximo  = max(Ingreso)
+    Media   = round(mean(Ingreso_mensual_ARS)),
+    Mediana = round(median(Ingreso_mensual_ARS)),
+    DS      = round(sd(Ingreso_mensual_ARS)),
+    Q1      = round(quantile(Ingreso_mensual_ARS,0.25)),
+    Q3      = round(quantile(Ingreso_mensual_ARS,0.75)),
+    Mínimo  = min(Ingreso_mensual_ARS),
+    Máximo  = max(Ingreso_mensual_ARS)
   )
 
 cat("\n=== INGRESO OCUPACIÓN PRINCIPAL – P21 (pesos) ===\n")
@@ -131,11 +138,11 @@ print(resumen_ingreso)
 # Ingreso por categoría ocupacional
 cat("\n=== INGRESO POR CATEGORÍA OCUPACIONAL ===\n")
 datos_ingreso %>%
-  group_by(Cat_ocup) %>%
+  group_by(Cat_ocupacional) %>%
   summarise(
-    Media   = round(mean(Ingreso)),
-    Mediana = round(median(Ingreso)),
-    DS      = round(sd(Ingreso)),
+    Media   = round(mean(Ingreso_mensual_ARS)),
+    Mediana = round(median(Ingreso_mensual_ARS)),
+    DS      = round(sd(Ingreso_mensual_ARS)),
     n       = n()
   ) %>%
   print()
@@ -145,8 +152,8 @@ cat("\n=== INGRESO POR FORMALIDAD ===\n")
 datos_ingreso %>%
   group_by(Formalidad) %>%
   summarise(
-    Media   = round(mean(Ingreso)),
-    Mediana = round(median(Ingreso)),
+    Media   = round(mean(Ingreso_mensual_ARS)),
+    Mediana = round(median(Ingreso_mensual_ARS)),
     n       = n()
   ) %>%
   print()
@@ -154,13 +161,13 @@ datos_ingreso %>%
 # --- 4.2 Horas semanales trabajadas (PP3E_TOT) ---
 resumen_horas <- datos %>%
   summarise(
-    Media   = round(mean(Horas_sem), 1),
-    Mediana = median(Horas_sem),
-    DS      = round(sd(Horas_sem), 1),
-    Q1      = quantile(Horas_sem, 0.25),
-    Q3      = quantile(Horas_sem, 0.75),
-    Mínimo  = min(Horas_sem),
-    Máximo  = max(Horas_sem)
+    Media   = round(mean(Horas_semanales), 1),
+    Mediana = median(Horas_semanales),
+    DS      = round(sd(Horas_semanales), 1),
+    Q1      = quantile(Horas_semanales, 0.25),
+    Q3      = quantile(Horas_semanales, 0.75),
+    Mínimo  = min(Horas_semanales),
+    Máximo  = max(Horas_semanales)
   )
 
 cat("\n=== HORAS SEMANALES TRABAJADAS – PP3E_TOT ===\n")
@@ -169,11 +176,11 @@ print(resumen_horas)
 # Horas por categoría ocupacional
 cat("\n=== HORAS SEMANALES POR CATEGORÍA OCUPACIONAL ===\n")
 datos %>%
-  group_by(Cat_ocup) %>%
+  group_by(Cat_ocupacional) %>%
   summarise(
-    Media   = round(mean(Horas_sem), 1),
-    Mediana = median(Horas_sem),
-    DS      = round(sd(Horas_sem), 1),
+    Media   = round(mean(Horas_semanales), 1),
+    Mediana = median(Horas_semanales),
+    DS      = round(sd(Horas_semanales), 1),
     n       = n()
   ) %>%
   print()
@@ -189,7 +196,7 @@ col_rojo  <- "#D7191C"
 paleta_4  <- c("#2C7BB6", "#ABD9E9", "#FDAE61", "#D7191C")
 
 # -- G1: Distribución por categoría ocupacional --
-g1 <- ggplot(tabla_cat, aes(x = reorder(Cat_ocup, Porcentaje), y = Porcentaje)) +
+g1 <- ggplot(tabla_cat, aes(x = reorder(Cat_ocupacional, Porcentaje), y = Porcentaje)) +
   geom_col(fill = col_azul) +
   geom_text(aes(label = paste0(Porcentaje, "%")), hjust = -0.1, size = 3.5) +
   coord_flip() +
@@ -216,10 +223,10 @@ g2 <- ggplot(tabla_form %>% filter(Formalidad != "Sin dato"),
 ggsave("graficos/g2_formalidad.png", g2, width = 8, height = 4, dpi = 150)
 
 # -- G3: Boxplot ingreso por categoría ocupacional --
-g3 <- ggplot(datos_ingreso, aes(x = Cat_ocup, y = Ingreso, fill = Cat_ocup)) +
+g3 <- ggplot(datos_ingreso, aes(x = Cat_ocupacional, y = Ingreso_mensual_ARS, fill = Cat_ocupacional)) +
   geom_boxplot(outlier.alpha = 0.15, outlier.size = 0.6) +
   scale_y_continuous(labels = scales::comma,
-                     limits = c(0, quantile(datos_ingreso$Ingreso, 0.99))) +
+                     limits = c(0, quantile(datos_ingreso$Ingreso_mensual_ARS, 0.99))) +
   scale_fill_manual(values = paleta_4) +
   labs(title = "Ingreso de la ocupación principal según categoría ocupacional",
        subtitle = "Se excluye el 1% superior – EPH 4T2025",
@@ -234,7 +241,7 @@ ggsave("graficos/g3_ingreso_catocup.png", g3, width = 7, height = 5, dpi = 150)
 mediana_form <- datos_ingreso %>%
   filter(Formalidad != "Sin dato") %>%
   group_by(Formalidad) %>%
-  summarise(Mediana_ingreso = median(Ingreso))
+  summarise(Mediana_ingreso = median(Ingreso_mensual_ARS))
 
 g4 <- ggplot(mediana_form, aes(x = reorder(Formalidad, Mediana_ingreso),
                                 y = Mediana_ingreso)) +
@@ -251,12 +258,12 @@ g4 <- ggplot(mediana_form, aes(x = reorder(Formalidad, Mediana_ingreso),
 ggsave("graficos/g4_ingreso_formalidad.png", g4, width = 8, height = 4, dpi = 150)
 
 # -- G5: Histograma de horas semanales --
-g5 <- ggplot(datos, aes(x = Horas_sem)) +
+g5 <- ggplot(datos, aes(x = Horas_semanales)) +
   geom_histogram(binwidth = 4, fill = col_azul, color = "white") +
-  geom_vline(xintercept = mean(datos$Horas_sem), color = col_rojo,
+  geom_vline(xintercept = mean(datos$Horas_semanales), color = col_rojo,
              linetype = "dashed", linewidth = 0.8) +
-  annotate("text", x = mean(datos$Horas_sem) + 1, y = Inf,
-           label = paste0("Media: ", round(mean(datos$Horas_sem), 1), " hs"),
+  annotate("text", x = mean(datos$Horas_semanales) + 1, y = Inf,
+           label = paste0("Media: ", round(mean(datos$Horas_semanales), 1), " hs"),
            vjust = 2, hjust = 0, color = col_rojo, size = 3.5) +
   labs(title = "Distribución de horas semanales trabajadas",
        subtitle = "Ocupación principal – EPH 4T2025",
