@@ -1,0 +1,6 @@
+- Solo 4 pag.
+- Hacer un buen planteo del problema al principio: unidad de análisis, población, si es un estudio muestral o censal, cuál es el tamaño muestral, si hubo casos que no respondieron, si esos casos los contamos o no, cuál es el indicador de interés, si ese indicador es un parámetro o un estadístico, porque eso indica si después hay que hacer una estimación.
+- Representar las variables con una tabla o un gráfico, no ambos.
+- Hacer la descriptiva en términos del problema (2 o 3 párrafos nada más). No poner: "la media es 5, la mediana es 20", sino hacer una interpretación, es decir: "la mitad de los casos... el 50% de los encuentados..."
+- Comentar si la distribución es simétrica o asimétrica y si hay casos atípicos.
+- No trabajar con series de tiempo.

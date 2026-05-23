@@ -77,3 +77,10 @@ resumida con los datasets más ordenados.
 ●  Otra lista con diversas fuentes de datos.
 ●  Herramienta de Google para buscar conjuntos de datos en múltiples páginas.
 
+Segunda parte - estimación
+En esta sección se propone desagregar el análisis según alguna de las variables cualitativas de interés definidas en el problema.
+a) Elija una variable cualitativa que divida a las unidades en grupos (por ejemplo: género, tipo de producto, categoría, marca, región, etc.). Justifique brevemente por qué esta comparación es relevante en el contexto del problema planteado.
+
+b) Para cada grupo, identifique el parámetro de interés asociado a alguna de las variables cuantitativas (por ejemplo: media poblacional µ, proporción π o varianza σ²). Indique la notación correspondiente para cada subpoblación.
+
+c) Construya un intervalo de confianza del 95% para el parámetro de interés en cada grupo por separado. Interprete ambos intervalos en el contexto del problema. ¿Los intervalos se superponen? ¿Qué sugiere eso?

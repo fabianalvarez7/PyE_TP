@@ -5,10 +5,10 @@
 # ============================================================
 install.packages('eph')
 install.packages('tidyverse')
-install.packages(ggplot2)
+install.packages('psych')
 library(eph)
 library(tidyverse)
-library(ggplot2)
+library(psych)
 
 options(scipen = 999) # Elimina la notación científica
 
@@ -116,20 +116,19 @@ print(tabla_formalidad_por_cat, n = 30)
 # 4. ANÁLISIS DE VARIABLES CUANTITATIVAS
 # ============================================================
 
-# Nota: el análisis de ingresos y horas se hace sobre ocupados con P21 > 0
-# (se excluyen personas con ingreso cero en la ocupación principal)
+# El análisis de ingresos y horas se hace sobre ocupados con ingresos (P21) > 0
 datos_ingreso <- datos %>% filter(Ingreso_mensual_ARS > 0)
 
 # --- 4.1 Ingreso de la ocupación principal (P21) ---
 resumen_ingreso <- datos_ingreso %>%
   summarise(
-    Media   = round(mean(Ingreso_mensual_ARS)),
+    Media = round(mean(Ingreso_mensual_ARS)),
     Mediana = round(median(Ingreso_mensual_ARS)),
-    DS      = round(sd(Ingreso_mensual_ARS)),
-    Q1      = round(quantile(Ingreso_mensual_ARS,0.25)),
-    Q3      = round(quantile(Ingreso_mensual_ARS,0.75)),
-    Mínimo  = min(Ingreso_mensual_ARS),
-    Máximo  = max(Ingreso_mensual_ARS)
+    DS = round(sd(Ingreso_mensual_ARS)),
+    Q1 = round(quantile(Ingreso_mensual_ARS,0.25)),
+    Q3 = round(quantile(Ingreso_mensual_ARS,0.75)),
+    Mínimo = min(Ingreso_mensual_ARS),
+    Máximo = max(Ingreso_mensual_ARS)
   )
 
 cat("\n=== INGRESO OCUPACIÓN PRINCIPAL – P21 (pesos) ===\n")
@@ -137,19 +136,19 @@ print(resumen_ingreso)
 
 # Ingreso por categoría ocupacional
 cat("\n=== INGRESO POR CATEGORÍA OCUPACIONAL ===\n")
-datos_ingreso %>%
+ingreso_por_categoriria <- datos_ingreso %>%
   group_by(Cat_ocupacional) %>%
   summarise(
-    Media   = round(mean(Ingreso_mensual_ARS)),
+    Media = round(mean(Ingreso_mensual_ARS)),
     Mediana = round(median(Ingreso_mensual_ARS)),
-    DS      = round(sd(Ingreso_mensual_ARS)),
-    n       = n()
+    DS = round(sd(Ingreso_mensual_ARS)),
+    n = n()
   ) %>%
   print()
 
 # Ingreso por formalidad
 cat("\n=== INGRESO POR FORMALIDAD ===\n")
-datos_ingreso %>%
+ingreso_por_formalidad <- datos_ingreso %>%
   group_by(Formalidad) %>%
   summarise(
     Media   = round(mean(Ingreso_mensual_ARS)),
@@ -157,6 +156,12 @@ datos_ingreso %>%
     n       = n()
   ) %>%
   print()
+
+# --- 4.1.1 Forma de distribución del ingreso ---
+cat("\n=== FORMA DE DISTRIBUCIÓN – INGRESO ===\n")
+cat("Asimetría:", round(skew(datos_ingreso$Ingreso_mensual_ARS), 3), "\n")
+cat("CV (%):", round(100 * sd(datos_ingreso$Ingreso_mensual_ARS) /
+                       mean(datos_ingreso$Ingreso_mensual_ARS), 1), "\n")
 
 # --- 4.2 Horas semanales trabajadas (PP3E_TOT) ---
 resumen_horas <- datos %>%
@@ -185,6 +190,12 @@ datos %>%
   ) %>%
   print()
 
+# --- 4.2.1 Forma de distribución de horas ---
+cat("\n=== FORMA DE DISTRIBUCIÓN – HORAS ===\n")
+cat("Asimetría:", round(skew(datos$Horas_semanales), 3), "\n")
+cat("CV (%):", round(100 * sd(datos$Horas_semanales) /
+                       mean(datos$Horas_semanales), 1), "\n")
+
 # ============================================================
 # 5. VISUALIZACIONES
 # ============================================================
@@ -209,33 +220,53 @@ g1 <- ggplot(tabla_cat, aes(x = reorder(Cat_ocupacional, Porcentaje), y = Porcen
 ggsave("graficos/g1_cat_ocup.png", g1, width = 7, height = 4, dpi = 150)
 
 # -- G2: Distribución por formalidad laboral --
-g2 <- ggplot(tabla_form %>% filter(Formalidad != "Sin dato"),
-             aes(x = reorder(Formalidad, Porcentaje), y = Porcentaje)) +
-  geom_col(fill = col_azul) +
-  geom_text(aes(label = paste0(Porcentaje, "%")), hjust = -0.1, size = 3.5) +
-  coord_flip() +
-  scale_y_continuous(limits = c(0, 80)) +
+tabla_form_pie <- tabla_form %>%
+  filter(Formalidad != "Sin dato") %>%
+  mutate(Porcentaje = round(n / sum(n) * 100, 1))
+
+g2 <- ggplot(tabla_form_pie,
+             aes(x = "", y = Porcentaje, fill = Formalidad)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar("y", start = 0) +
+  geom_text(aes(label = paste0(Porcentaje, "%")),
+            position = position_stack(vjust = 0.5), size = 5) +
+  scale_fill_manual(values = c("Formal" = col_azul, "Informal" = col_rojo)) +
   labs(title = "Distribución por condición de formalidad laboral",
        subtitle = "Ocupados – EPH 4T2025",
-       x = NULL, y = "Porcentaje (%)") +
-  theme_minimal()
+       fill = NULL) +
+  theme_void()
 
-ggsave("graficos/g2_formalidad.png", g2, width = 8, height = 4, dpi = 150)
+ggsave("graficos/g2_formalidad.png", g2, width = 5, height = 5, dpi = 150, bg = "white")
 
 # -- G3: Boxplot ingreso por categoría ocupacional --
+stats_g3 <- datos_ingreso %>%
+  group_by(Cat_ocupacional) %>%
+  summarise(
+    Min     = quantile(Ingreso_mensual_ARS, 0.00),
+    Q1      = quantile(Ingreso_mensual_ARS, 0.25),
+    Mediana = quantile(Ingreso_mensual_ARS, 0.50),
+    Q3      = quantile(Ingreso_mensual_ARS, 0.75),
+    Max     = quantile(Ingreso_mensual_ARS, 0.99)
+  ) %>%
+  pivot_longer(-Cat_ocupacional, names_to = "stat", values_to = "valor")
+
 g3 <- ggplot(datos_ingreso, aes(x = Cat_ocupacional, y = Ingreso_mensual_ARS, fill = Cat_ocupacional)) +
   geom_boxplot(outlier.alpha = 0.15, outlier.size = 0.6) +
-  scale_y_continuous(labels = scales::comma,
+  geom_text(data = stats_g3,
+            aes(x = Cat_ocupacional, y = valor,
+                label = format(round(valor), big.mark = ".", scientific = FALSE)),
+            hjust = -0.05, nudge_x = 0.42, size = 2.2, inherit.aes = FALSE) +
+  scale_y_continuous(labels = function(x) format(x, big.mark = ".", scientific = FALSE),
                      limits = c(0, quantile(datos_ingreso$Ingreso_mensual_ARS, 0.99))) +
   scale_fill_manual(values = paleta_4) +
   labs(title = "Ingreso de la ocupación principal según categoría ocupacional",
        subtitle = "Se excluye el 1% superior – EPH 4T2025",
-       x = NULL, y = "Ingreso P21 (pesos)") +
+       x = NULL, y = "Ingreso (pesos)") +
   theme_minimal() +
   theme(legend.position = "none",
         axis.text.x = element_text(angle = 15, hjust = 1))
 
-ggsave("graficos/g3_ingreso_catocup.png", g3, width = 7, height = 5, dpi = 150)
+ggsave("graficos/g3_ingreso_catocup.png", g3, width = 10, height = 5, dpi = 150)
 
 # -- G4: Mediana de ingreso por formalidad --
 mediana_form <- datos_ingreso %>%
@@ -246,9 +277,9 @@ mediana_form <- datos_ingreso %>%
 g4 <- ggplot(mediana_form, aes(x = reorder(Formalidad, Mediana_ingreso),
                                 y = Mediana_ingreso)) +
   geom_col(fill = col_azul) +
-  geom_text(aes(label = scales::comma(Mediana_ingreso)), hjust = -0.1, size = 3.5) +
+  geom_text(aes(label = format(Mediana_ingreso, big.mark = ".", scientific = FALSE)), hjust = -0.1, size = 3.5) +
   coord_flip() +
-  scale_y_continuous(labels = scales::comma,
+  scale_y_continuous(labels = function(x) format(x, big.mark = ".", scientific = FALSE),
                      limits = c(0, max(mediana_form$Mediana_ingreso) * 1.2)) +
   labs(title = "Mediana del ingreso por condición de formalidad",
        subtitle = "Ocupados con P21 > 0 – EPH 4T2025",
@@ -267,10 +298,9 @@ g5 <- ggplot(datos, aes(x = Horas_semanales)) +
            vjust = 2, hjust = 0, color = col_rojo, size = 3.5) +
   labs(title = "Distribución de horas semanales trabajadas",
        subtitle = "Ocupación principal – EPH 4T2025",
-       x = "Horas semanales (PP3E_TOT)", y = "Frecuencia") +
+       x = "Horas semanales", y = "Frecuencia") +
   theme_minimal()
 
 ggsave("graficos/g5_horas.png", g5, width = 6, height = 4, dpi = 150)
 
-cat("\nGráficos guardados en graficos/\n")
-cat("Análisis completado.\n")
+saveRDS(datos, "datos_EPH.rds")
