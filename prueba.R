@@ -6,11 +6,11 @@
 install.packages('eph')
 install.packages('tidyverse')
 install.packages('psych')
+install.packages('DescTools')
 library(eph)
 library(tidyverse)
 library(psych)
-
-options(scipen = 999) # Elimina la notación científica
+library(DescTools)
 
 # ============================================================
 # 1. DESCARGA DE DATOS
@@ -316,28 +316,27 @@ ic_ingreso <- datos_ingreso %>%
   group_by(Cat_ocupacional) %>%
   summarise(
     n     = n(),
-    media = mean(Ingreso_mensual_ARS),
-    ds    = sd(Ingreso_mensual_ARS),
-    error = qt(0.975, df = n - 1) * ds / sqrt(n),
-    LI    = media - error,
-    LS    = media + error
-  ) %>%
-  mutate(across(c(media, ds, error, LI, LS), round))
+    media = round(mean(Ingreso_mensual_ARS)),
+    LI    = round(MeanCI(Ingreso_mensual_ARS, conf.level = 0.95)[["lwr.ci"]]),
+    LS    = round(MeanCI(Ingreso_mensual_ARS, conf.level = 0.95)[["upr.ci"]])
+  )
 
 cat("\n=== IC 95% – MEDIA DE INGRESO POR CATEGORÍA OCUPACIONAL ===\n")
 print(ic_ingreso)
 
 # -- G6: Intervalos de confianza --
-g6 <- ggplot(ic_ingreso, aes(x = Cat_ocupacional, y = media, color = Cat_ocupacional)) +
+g6 <- ggplot(ic_ingreso, aes(x = reorder(Cat_ocupacional, media),
+                             y = media, color = Cat_ocupacional)) +
   geom_point(size = 4) +
-  geom_errorbar(aes(ymin = LI, ymax = LS), width = 0.2, linewidth = 1) +
+  geom_errorbar(aes(ymin = LI, ymax = LS), width = 0.25, linewidth = 1) +
   geom_text(aes(label = format(media, big.mark = ".", scientific = FALSE)),
             vjust = -1.2, size = 3.5) +
+  coord_flip() +
   scale_y_continuous(labels = function(x) format(x, big.mark = ".", scientific = FALSE)) +
   scale_color_manual(values = paleta_4[1:3]) +
   labs(title = "IC 95% para la media del ingreso mensual",
        subtitle = "Por categoría ocupacional – EPH 4T2025",
-       x = NULL, y = "Ingreso (pesos)") +
+       x = NULL, y = "Ingreso mensual (pesos)") +
   theme_minimal() +
   theme(legend.position = "none")
 

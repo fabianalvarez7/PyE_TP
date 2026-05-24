@@ -17,8 +17,10 @@ knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
                       fig.pos = "H")
 library(tidyverse)
 library(psych)
+library(DescTools)
 
 datos         <- readRDS("datos_EPH.rds")
+ic_ingreso    <- readRDS("ic_ingreso.rds")
 datos_ingreso <- datos %>% filter(Ingreso_mensual_ARS > 0)
 
 tabla_cat <- datos %>%
@@ -95,7 +97,34 @@ knitr::include_graphics("graficos/g5_horas.png")
 
 La distribución de horas semanales es **levemente asimétrica hacia la izquierda** (coeficiente de asimetría = `r round(skew(datos$Horas_semanales), 2)`). La mitad de los ocupados trabaja `r median(datos$Horas_semanales)` horas o más por semana; la concentración en torno a las 40 horas es consistente con la jornada laboral legal. El coeficiente de variación del `r round(100 * sd(datos$Horas_semanales) / mean(datos$Horas_semanales), 1)`% indica menor dispersión que la variable de ingresos.
 
-## 4. Conclusión
+## 4. Estimación por intervalos de confianza
+
+**a)** Se utiliza la **categoría ocupacional** como variable de agrupamiento. Esta comparación es relevante porque cada modalidad de inserción laboral (patrón, cuentapropista, asalariado) implica condiciones económicas estructuralmente distintas: los patrones organizan factores de producción, los cuentapropistas operan de forma independiente y los asalariados trabajan en relación de dependencia.
+
+**b)** Para cada grupo $i$ el parámetro de interés es la **media del ingreso mensual** ($\mu_i$): $\mu_1$ para patrones/empleadores, $\mu_2$ para cuentapropistas y $\mu_3$ para asalariados. El desvío estándar poblacional es desconocido, por lo que se aplica la distribución $t_{n_i-1}$. Los tamaños de grupo superan los `r min(ic_ingreso$n)` casos, garantizando la validez del TLC aun con la distribución asimétrica del ingreso.
+
+**c)** Los intervalos de confianza al 95 % son:
+
+```{r ic-tabla}
+knitr::kable(
+  ic_ingreso %>%
+    mutate(across(c(media, LI, LS),
+                  ~ format(., big.mark = ".", scientific = FALSE))) %>%
+    rename("Categoría" = Cat_ocupacional,
+           "n" = n, "Media" = media,
+           "LI 95%" = LI, "LS 95%" = LS),
+  align = c("l","r","r","r","r"),
+  caption = "IC al 95\\% para la media del ingreso mensual por categoría ocupacional."
+)
+```
+
+```{r g6, fig.align='center', out.width='82%', fig.cap="IC 95\\% para la media del ingreso mensual por categoría ocupacional. EPH 4T2025."}
+knitr::include_graphics("graficos/g6_ic_ingreso.png")
+```
+
+El IC de patrones/empleadores ($\hat{\mu}_1 = $ `r pesos(ic_ingreso %>% filter(Cat_ocupacional=="Patrón/empleador") %>% pull(media))`) **no se superpone** con los de los otros grupos, lo que indica que su ingreso medio es claramente superior. En cambio, los intervalos de cuentapropistas y asalariados **sí se superponen**, lo que sugiere que no existe evidencia suficiente para afirmar una diferencia significativa en el ingreso promedio entre ambos grupos con esta muestra.
+
+## 5. Conclusión
 
 El análisis descriptivo de los ocupados en Argentina durante el 4T2025 revela una estructura laboral dominada por asalariados, con una proporción significativa de informalidad. La distribución del ingreso es marcadamente asimétrica con valores atípicos hacia arriba, por lo que la mediana resulta el indicador más representativo del ingreso típico. Las horas semanales presentan una distribución más homogénea, concentrada en la jornada de 40 horas.
 
