@@ -303,4 +303,45 @@ g5 <- ggplot(datos, aes(x = Horas_semanales)) +
 
 ggsave("graficos/g5_horas.png", g5, width = 6, height = 4, dpi = 150)
 
+# ============================================================
+# 6. INTERVALOS DE CONFIANZA AL 95% – CONSIGNA 2
+# ============================================================
+# Variable cualitativa: Categoría ocupacional
+# Parámetro: µ_i = media del ingreso mensual (ocupación principal)
+# Grupos: Patrón, Cuenta propia, Asalariado
+# Familiar s/rem. excluido: P21 = 0, no tiene ingreso declarado
+
+ic_ingreso <- datos_ingreso %>%
+  filter(Cat_ocupacional != "Trab. familiar s/rem.") %>%
+  group_by(Cat_ocupacional) %>%
+  summarise(
+    n     = n(),
+    media = mean(Ingreso_mensual_ARS),
+    ds    = sd(Ingreso_mensual_ARS),
+    error = qt(0.975, df = n - 1) * ds / sqrt(n),
+    LI    = media - error,
+    LS    = media + error
+  ) %>%
+  mutate(across(c(media, ds, error, LI, LS), round))
+
+cat("\n=== IC 95% – MEDIA DE INGRESO POR CATEGORÍA OCUPACIONAL ===\n")
+print(ic_ingreso)
+
+# -- G6: Intervalos de confianza --
+g6 <- ggplot(ic_ingreso, aes(x = Cat_ocupacional, y = media, color = Cat_ocupacional)) +
+  geom_point(size = 4) +
+  geom_errorbar(aes(ymin = LI, ymax = LS), width = 0.2, linewidth = 1) +
+  geom_text(aes(label = format(media, big.mark = ".", scientific = FALSE)),
+            vjust = -1.2, size = 3.5) +
+  scale_y_continuous(labels = function(x) format(x, big.mark = ".", scientific = FALSE)) +
+  scale_color_manual(values = paleta_4[1:3]) +
+  labs(title = "IC 95% para la media del ingreso mensual",
+       subtitle = "Por categoría ocupacional – EPH 4T2025",
+       x = NULL, y = "Ingreso (pesos)") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+ggsave("graficos/g6_ic_ingreso.png", g6, width = 7, height = 5, dpi = 150)
+
 saveRDS(datos, "datos_EPH.rds")
+saveRDS(ic_ingreso, "ic_ingreso.rds")
