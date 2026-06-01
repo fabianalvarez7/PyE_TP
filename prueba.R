@@ -3,6 +3,7 @@
 # Dataset: EPH Individual – 4° Trimestre 2025 (INDEC).
 # Tema: Situación laboral en Argentina.
 # ============================================================
+
 install.packages('eph')
 install.packages('tidyverse')
 install.packages('psych')
@@ -13,18 +14,15 @@ library(psych)
 library(DescTools)
 
 # ============================================================
-# 1. DESCARGA DE DATOS
+# 1. DESCARGA DE DATOS - PRIMERA PARTE
 # ============================================================
 # get_microdata() descarga directamente desde INDEC.
 
 ind <- get_microdata(
-  year   = 2025,
+  year = 2025,
   period = 4,
-  type   = "individual"
+  type = "individual"
 )
-
-cat("Filas descargadas:", nrow(ind), "\n")
-cat("Columnas disponibles:", ncol(ind), "\n")
 
 # ============================================================
 # 2. PREPARACIÓN Y LIMPIEZA
@@ -70,7 +68,7 @@ datos <- ind %>%
     Formalidad = case_when(
       EMPLEO == 1 ~ "Formal",
       EMPLEO == 2 ~ "Informal",
-      TRUE        ~ "Sin dato"
+      TRUE ~ "Sin dato"
     ) %>% factor(levels = c("Formal", "Informal", "Sin dato")),
 
     # Variable 3: Ingreso en pesos de la ocupación principal
@@ -81,7 +79,6 @@ datos <- ind %>%
   ) %>%
   select(Cat_ocupacional, Formalidad, Ingreso_mensual_ARS, Horas_semanales)
 
-cat("\nOcupados con datos completos:", nrow(datos), "\n")
 
 # ============================================================
 # 3. ANÁLISIS DE VARIABLES CUALITATIVAS
@@ -91,25 +88,19 @@ cat("\nOcupados con datos completos:", nrow(datos), "\n")
 tabla_cat <- datos %>%
   count(Cat_ocupacional) %>%
   mutate(Porcentaje = round(n / sum(n) * 100, 1))
-
-cat("\n=== CATEGORÍA OCUPACIONAL ===\n")
 print(tabla_cat)
 
 # --- 3.2 Formalidad laboral ---
 tabla_form <- datos %>%
   count(Formalidad) %>%
   mutate(Porcentaje = round(n / sum(n) * 100, 1))
-
-cat("\n=== FORMALIDAD LABORAL ===\n")
 print(tabla_form)
 
 # --- 3.3 Formalidad dentro de cada categoría ocupacional ---
-cat("\n=== FORMALIDAD POR CATEGORÍA OCUPACIONAL ===\n")
 tabla_formalidad_por_cat <- datos %>%
   count(Cat_ocupacional, Formalidad) %>%
   group_by(Cat_ocupacional) %>%
   mutate(Porcentaje = round(n / sum(n) * 100, 1))
-
 print(tabla_formalidad_por_cat, n = 30)
 
 # ============================================================
@@ -130,32 +121,28 @@ resumen_ingreso <- datos_ingreso %>%
     Mínimo = min(Ingreso_mensual_ARS),
     Máximo = max(Ingreso_mensual_ARS)
   )
-
-cat("\n=== INGRESO OCUPACIÓN PRINCIPAL – P21 (pesos) ===\n")
 print(resumen_ingreso)
 
 # Ingreso por categoría ocupacional
-cat("\n=== INGRESO POR CATEGORÍA OCUPACIONAL ===\n")
-ingreso_por_categoriria <- datos_ingreso %>%
+ingreso_por_categoria <- datos_ingreso %>%
   group_by(Cat_ocupacional) %>%
   summarise(
     Media = round(mean(Ingreso_mensual_ARS)),
     Mediana = round(median(Ingreso_mensual_ARS)),
     DS = round(sd(Ingreso_mensual_ARS)),
     n = n()
-  ) %>%
-  print()
+  )
+  print(ingreso_por_categoria)
 
 # Ingreso por formalidad
-cat("\n=== INGRESO POR FORMALIDAD ===\n")
 ingreso_por_formalidad <- datos_ingreso %>%
   group_by(Formalidad) %>%
   summarise(
-    Media   = round(mean(Ingreso_mensual_ARS)),
+    Media = round(mean(Ingreso_mensual_ARS)),
     Mediana = round(median(Ingreso_mensual_ARS)),
-    n       = n()
-  ) %>%
-  print()
+    n= n()
+  )
+  print(ingreso_por_formalidad)
 
 # --- 4.1.1 Forma de distribución del ingreso ---
 cat("\n=== FORMA DE DISTRIBUCIÓN – INGRESO ===\n")
@@ -166,29 +153,26 @@ cat("CV (%):", round(100 * sd(datos_ingreso$Ingreso_mensual_ARS) /
 # --- 4.2 Horas semanales trabajadas (PP3E_TOT) ---
 resumen_horas <- datos %>%
   summarise(
-    Media   = round(mean(Horas_semanales), 1),
+    Media = round(mean(Horas_semanales), 1),
     Mediana = median(Horas_semanales),
-    DS      = round(sd(Horas_semanales), 1),
-    Q1      = quantile(Horas_semanales, 0.25),
-    Q3      = quantile(Horas_semanales, 0.75),
-    Mínimo  = min(Horas_semanales),
-    Máximo  = max(Horas_semanales)
+    DS = round(sd(Horas_semanales), 1),
+    Q1 = quantile(Horas_semanales, 0.25),
+    Q3 = quantile(Horas_semanales, 0.75),
+    Mínimo = min(Horas_semanales),
+    Máximo = max(Horas_semanales)
   )
-
-cat("\n=== HORAS SEMANALES TRABAJADAS – PP3E_TOT ===\n")
 print(resumen_horas)
 
 # Horas por categoría ocupacional
-cat("\n=== HORAS SEMANALES POR CATEGORÍA OCUPACIONAL ===\n")
-datos %>%
+horas_por_categoria <- datos %>%
   group_by(Cat_ocupacional) %>%
   summarise(
-    Media   = round(mean(Horas_semanales), 1),
+    Media = round(mean(Horas_semanales), 1),
     Mediana = median(Horas_semanales),
-    DS      = round(sd(Horas_semanales), 1),
-    n       = n()
-  ) %>%
-  print()
+    DS = round(sd(Horas_semanales), 1),
+    n = n()
+  )
+print(horas_por_categoria)
 
 # --- 4.2.1 Forma de distribución de horas ---
 cat("\n=== FORMA DE DISTRIBUCIÓN – HORAS ===\n")
@@ -200,10 +184,8 @@ cat("CV (%):", round(100 * sd(datos$Horas_semanales) /
 # 5. VISUALIZACIONES
 # ============================================================
 
-dir.create("graficos", showWarnings = FALSE)
-
-col_azul  <- "#2C7BB6"
-col_rojo  <- "#D7191C"
+col_azul  <- "#0b5bc4"
+col_rojo  <- "#b30f12"
 paleta_4  <- c("#2C7BB6", "#ABD9E9", "#FDAE61", "#D7191C")
 
 # -- G1: Distribución por categoría ocupacional --
@@ -217,7 +199,6 @@ g1 <- ggplot(tabla_cat, aes(x = reorder(Cat_ocupacional, Porcentaje), y = Porcen
        x = NULL, y = "Porcentaje (%)") +
   theme_minimal()
 
-ggsave("graficos/g1_cat_ocup.png", g1, width = 7, height = 4, dpi = 150)
 
 # -- G2: Distribución por formalidad laboral --
 tabla_form_pie <- tabla_form %>%
@@ -236,17 +217,16 @@ g2 <- ggplot(tabla_form_pie,
        fill = NULL) +
   theme_void()
 
-ggsave("graficos/g2_formalidad.png", g2, width = 5, height = 5, dpi = 150, bg = "white")
 
 # -- G3: Boxplot ingreso por categoría ocupacional --
 stats_g3 <- datos_ingreso %>%
   group_by(Cat_ocupacional) %>%
   summarise(
-    Min     = quantile(Ingreso_mensual_ARS, 0.00),
-    Q1      = quantile(Ingreso_mensual_ARS, 0.25),
+    Min = quantile(Ingreso_mensual_ARS, 0.00),
+    Q1 = quantile(Ingreso_mensual_ARS, 0.25),
     Mediana = quantile(Ingreso_mensual_ARS, 0.50),
-    Q3      = quantile(Ingreso_mensual_ARS, 0.75),
-    Max     = quantile(Ingreso_mensual_ARS, 0.99)
+    Q3 = quantile(Ingreso_mensual_ARS, 0.75),
+    Max = quantile(Ingreso_mensual_ARS, 0.99)
   ) %>%
   pivot_longer(-Cat_ocupacional, names_to = "stat", values_to = "valor")
 
@@ -266,7 +246,6 @@ g3 <- ggplot(datos_ingreso, aes(x = Cat_ocupacional, y = Ingreso_mensual_ARS, fi
   theme(legend.position = "none",
         axis.text.x = element_text(angle = 15, hjust = 1))
 
-ggsave("graficos/g3_ingreso_catocup.png", g3, width = 10, height = 5, dpi = 150)
 
 # -- G4: Mediana de ingreso por formalidad --
 mediana_form <- datos_ingreso %>%
@@ -286,7 +265,6 @@ g4 <- ggplot(mediana_form, aes(x = reorder(Formalidad, Mediana_ingreso),
        x = NULL, y = "Ingreso mediano P21 (pesos)") +
   theme_minimal()
 
-ggsave("graficos/g4_ingreso_formalidad.png", g4, width = 8, height = 4, dpi = 150)
 
 # -- G5: Histograma de horas semanales --
 g5 <- ggplot(datos, aes(x = Horas_semanales)) +
@@ -301,10 +279,9 @@ g5 <- ggplot(datos, aes(x = Horas_semanales)) +
        x = "Horas semanales", y = "Frecuencia") +
   theme_minimal()
 
-ggsave("graficos/g5_horas.png", g5, width = 6, height = 4, dpi = 150)
 
 # ============================================================
-# 6. INTERVALOS DE CONFIANZA AL 95% – CONSIGNA 2
+# 6. INTERVALOS DE CONFIANZA AL 95% – SEGUNDA PARTE
 # ============================================================
 # Variable cualitativa: Categoría ocupacional
 # Parámetro: µ_i = media del ingreso mensual (ocupación principal)
@@ -315,10 +292,10 @@ ic_ingreso <- datos_ingreso %>%
   filter(Cat_ocupacional != "Trab. familiar s/rem.") %>%
   group_by(Cat_ocupacional) %>%
   summarise(
-    n     = n(),
+    n = n(),
     media = round(mean(Ingreso_mensual_ARS)),
-    LI    = round(MeanCI(Ingreso_mensual_ARS, conf.level = 0.95)[["lwr.ci"]]),
-    LS    = round(MeanCI(Ingreso_mensual_ARS, conf.level = 0.95)[["upr.ci"]])
+    LI = round(MeanCI(Ingreso_mensual_ARS, conf.level = 0.95)[["lwr.ci"]]),
+    LS = round(MeanCI(Ingreso_mensual_ARS, conf.level = 0.95)[["upr.ci"]])
   )
 
 cat("\n=== IC 95% – MEDIA DE INGRESO POR CATEGORÍA OCUPACIONAL ===\n")
@@ -339,8 +316,6 @@ g6 <- ggplot(ic_ingreso, aes(x = reorder(Cat_ocupacional, media),
        x = NULL, y = "Ingreso mensual (pesos)") +
   theme_minimal() +
   theme(legend.position = "none")
-
-ggsave("graficos/g6_ic_ingreso.png", g6, width = 7, height = 5, dpi = 150)
 
 saveRDS(datos, "datos_EPH.rds")
 saveRDS(ic_ingreso, "ic_ingreso.rds")

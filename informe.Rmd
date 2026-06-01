@@ -1,8 +1,11 @@
 ---
-title: "Situación laboral de los ocupados en Argentina"
-subtitle: "EPH – 4° Trimestre 2025"
-author: "[Completar con integrantes del grupo]"
-date: "Mayo 2026"
+title: "UNR - FCEIA - TUIA
+        Probabilidad y Estadística
+        Trabajo práctico"
+subtitle: "Situación laboral de los ocupados en Argentina - EPH 4° Trimestre 2025"
+author: "Fabián Alvarez 
+         Agustín Marquardt
+         Damián Turco"
 output:
   pdf_document:
     latex_engine: xelatex
@@ -42,6 +45,8 @@ med_cat <- datos_ingreso %>%
 pesos <- function(x) paste0("\\$", format(round(x), big.mark = "."))
 ```
 
+## Fuente de los datos: https://www.indec.gob.ar/indec/web/Institucional-Indec-BasesDeDatos-1
+
 ## 1. Introducción y planteo del problema
 
 La Encuesta Permanente de Hogares (EPH) es un programa de producción estadística del INDEC que releva las condiciones socioeconómicas de la población en los principales aglomerados urbanos del país. La **unidad de análisis** es cada persona ocupada residente en dichos aglomerados durante el 4° trimestre de 2025. La **población** de referencia son los ocupados en los 31 aglomerados urbanos cubiertos por la EPH.
@@ -59,7 +64,7 @@ Los valores calculados a partir de la muestra son **estadísticos** que permiten
 
 ## 2. Descripción de la muestra
 
-La EPH utiliza un diseño muestral **probabilístico, estratificado y bietápico**, por lo que los resultados son estimaciones representativas de la población urbana argentina, no un censo.
+La EPH utiliza un diseño muestral probabilístico, estratificado y en dos etapas (primero se seleccionan los conglomerados y luego se encuesta a una muestra aleatoria de personas), por lo que los resultados son estimaciones representativas de la población urbana argentina, no un censo.
 
 De los registros disponibles, se retuvieron **`r nrow(datos)` ocupados** con datos completos en las cuatro variables. La variable Formalidad presenta `r tabla_form %>% filter(Formalidad == "Sin dato") %>% pull(n)` casos sin dato (`r tabla_form %>% filter(Formalidad == "Sin dato") %>% pull(Porcentaje)`%), correspondientes principalmente a patrones y cuentapropistas para quienes el campo EMPLEO no fue declarado; estos casos se excluyen del análisis de formalidad. El INDEC clasifica como ocupados a los trabajadores familiares sin remuneración (`r tabla_cat %>% filter(Cat_ocupacional == "Trab. familiar s/rem.") %>% pull(Porcentaje)`% de la muestra), quienes participan del análisis ocupacional y de horas pero son excluidos del análisis de ingresos al no percibir remuneración.
 
@@ -99,9 +104,10 @@ La distribución de horas semanales es **levemente asimétrica hacia la izquierd
 
 ## 4. Estimación por intervalos de confianza
 
-**a)** Se utiliza la **categoría ocupacional** como variable de agrupamiento. Esta comparación es relevante porque cada modalidad de inserción laboral (patrón, cuentapropista, asalariado) implica condiciones económicas estructuralmente distintas: los patrones organizan factores de producción, los cuentapropistas operan de forma independiente y los asalariados trabajan en relación de dependencia.
+**a)** Se utiliza la **categoría ocupacional** como variable de agrupamiento para profundizar en el impacto de la estructura laboral sobre la distribución de ingresos en Argentina. El análisis inferencial se centra en los tres grupos principales que perciben ingresos por su actividad: Patrón/ Empleador, Asalariado y Cuenta Propia. Se excluyen del análisis a los Trabajadores familiares sin remuneración, cuya proporción es marginal (0.5%).
+Comparar las medias de los ingresos de estos grupos permite evaluar los niveles de precarización, concentración del ingreso y desigualdad en el tejido socioeconómico actual.
 
-**b)** Para cada grupo $i$ el parámetro de interés es la **media del ingreso mensual** ($\mu_i$): $\mu_1$ para patrones/empleadores, $\mu_2$ para cuentapropistas y $\mu_3$ para asalariados. El desvío estándar poblacional es desconocido, por lo que se aplica la distribución $t_{n_i-1}$. Los tamaños de grupo superan los `r min(ic_ingreso$n)` casos, garantizando la validez del TLC aun con la distribución asimétrica del ingreso.
+**b)** Para cada grupo $i$ el parámetro de interés es la **media del ingreso mensual** ($\mu_i$): $\mu_1$ para patrones/empleadores, $\mu_2$ para cuentapropistas y $\mu_3$ para asalariados. El desvío estándar poblacional es desconocido, por lo que se aplica la distribución $t_{n_i-1}$. Los tamaños de grupo superan los `r min(ic_ingreso$n)` casos, garantizando la validez del Teorema Central del Límite aun con la distribución asimétrica del ingreso.
 
 **c)** Los intervalos de confianza al 95 % son:
 
