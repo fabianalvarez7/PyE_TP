@@ -107,7 +107,7 @@ La distribución de horas semanales es **levemente asimétrica hacia la izquierd
 **a)** Se utiliza la **categoría ocupacional** como variable de agrupamiento para profundizar en el impacto de la estructura laboral sobre la distribución de ingresos en Argentina. El análisis inferencial se centra en los tres grupos principales que perciben ingresos por su actividad: Patrón/ Empleador, Asalariado y Cuenta Propia. Se excluyen del análisis a los Trabajadores familiares sin remuneración, cuya proporción es marginal (0.5%).
 Comparar las medias de los ingresos de estos grupos permite evaluar los niveles de precarización, concentración del ingreso y desigualdad en el tejido socioeconómico actual.
 
-**b)** Para cada grupo $i$ el parámetro de interés es la **media del ingreso mensual** ($\mu_i$): $\mu_1$ para patrones/empleadores, $\mu_2$ para cuentapropistas y $\mu_3$ para asalariados. El desvío estándar poblacional es desconocido, por lo que se aplica la distribución $t_{n_i-1}$. Los tamaños de grupo superan los `r min(ic_ingreso$n)` casos, garantizando la validez del Teorema Central del Límite aun con la distribución asimétrica del ingreso.
+**b)** Para cada grupo $i$ el parámetro de interés es la **media del ingreso mensual** ($\mu_i$): $\mu_1$ para patrones/empleadores, $\mu_2$ para cuentapropistas y $\mu_3$ para asalariados. El desvío estándar poblacional es desconocido, por lo que se aplica la distribución $t_{n_i-1}$. Los tamaños de grupo $\n_i$ superan los `r min(ic_ingreso$n)` casos, garantizando la validez del Teorema Central del Límite aun con la distribución asimétrica del ingreso.
 
 **c)** Los intervalos de confianza al 95 % son:
 
@@ -128,10 +128,10 @@ knitr::kable(
 knitr::include_graphics("graficos/g6_ic_ingreso.png")
 ```
 
-El IC de patrones/empleadores ($\hat{\mu}_1 = $ `r pesos(ic_ingreso %>% filter(Cat_ocupacional=="Patrón/empleador") %>% pull(media))`) **no se superpone** con los de los otros grupos, lo que indica que su ingreso medio es claramente superior. En cambio, los intervalos de cuentapropistas y asalariados **sí se superponen**, lo que sugiere que no existe evidencia suficiente para afirmar una diferencia significativa en el ingreso promedio entre ambos grupos con esta muestra.
+Con un nivel de confianza del 95% se estima que la media real de los ingresos mensuales de los patrones se sitúa entre $1.685.000 y $2.025.000. Con el mismo criterio, el verdadero promedio de los ingresos del sector asalariado se encuentra entre $935.000 y $984.000, mientras que la media poblacional de los trabajadores por cuenta propia se ubica en el rango de los $715.000 a los $770.000. 
 
 ## 5. Conclusión
 
-El análisis descriptivo de los ocupados en Argentina durante el 4T2025 revela una estructura laboral dominada por asalariados, con una proporción significativa de informalidad. La distribución del ingreso es marcadamente asimétrica con valores atípicos hacia arriba, por lo que la mediana resulta el indicador más representativo del ingreso típico. Las horas semanales presentan una distribución más homogénea, concentrada en la jornada de 40 horas.
+La falta de superposición visual y numérica entre los tres intervalos calculados ratifica una severa segmentación estructural en la distribución de la riqueza. Los empleadores consolidan una posición económica superior que duplica la remuneración de los asalariados y casi triplica la del autoempleo. Este comportamiento se comprende al relacionarlo con el análisis descriptivo del informe, donde se ve que la tasa de informalidad general alcanza el 44.9%, provocando que la mitad de la masa laboral precarizada perciba un ingreso medio de apenas $400.000 o menos. 
 
 Dado que los resultados provienen de una muestra probabilística representativa de los aglomerados urbanos, **las conclusiones son de carácter preliminar**: los estadísticos calculados estiman los parámetros poblacionales con un margen de error asociado al diseño muestral de la EPH.
