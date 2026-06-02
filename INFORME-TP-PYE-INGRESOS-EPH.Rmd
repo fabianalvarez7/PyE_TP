@@ -1,14 +1,7 @@
 ---
-title: "UNR - FCEIA - TUIA
-        Probabilidad y Estadística
-        Trabajo práctico"
-subtitle: "Situación laboral de los ocupados en Argentina - EPH 4° Trimestre 2025"
-author: "Fabián Alvarez 
-         Agustín Marquardt
-         Damián Turco"
 output:
   pdf_document:
-    latex_engine: xelatex
+    latex_engine: lualatex
 geometry: "top=2cm, bottom=2cm, left=2.5cm, right=2.5cm"
 fontsize: 11pt
 header-includes:
@@ -17,7 +10,7 @@ header-includes:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
-                      fig.pos = "H")
+                      fig.height = 3, fig.width = 6.5, fig.pos = "H")
 library(tidyverse)
 library(psych)
 library(DescTools)
@@ -25,6 +18,10 @@ library(DescTools)
 datos         <- readRDS("datos_EPH.rds")
 ic_ingreso    <- readRDS("ic_ingreso.rds")
 datos_ingreso <- datos %>% filter(Ingreso_mensual_ARS > 0)
+
+col_azul <- "#0b5bc4"
+col_rojo <- "#b30f12"
+paleta_4 <- c("#2C7BB6", "#ABD9E9", "#FDAE61", "#D7191C")
 
 tabla_cat <- datos %>%
   count(Cat_ocupacional) %>%
@@ -45,7 +42,20 @@ med_cat <- datos_ingreso %>%
 pesos <- function(x) paste0("\\$", format(round(x), big.mark = "."))
 ```
 
-## Fuente de los datos: https://www.indec.gob.ar/indec/web/Institucional-Indec-BasesDeDatos-1
+\begin{center}
+{\Large \textbf{UNR -- FCEIA -- TUIA}}\\[4pt]
+{\large Probabilidad y Estadística -- Trabajo práctico}\\[4pt]
+{\normalsize Situación laboral de los ocupados en Argentina -- EPH 4° Trimestre 2025}\\[10pt]
+{\normalsize
+Fabián Alvarez\\[2pt]
+Agustín Marquardt\\[2pt]
+Damián Turco
+}
+\end{center}
+
+\vspace{0.4cm}
+
+
 
 ## 1. Introducción y planteo del problema
 
@@ -73,7 +83,15 @@ De los registros disponibles, se retuvieron **`r nrow(datos)` ocupados** con dat
 ### Categoría ocupacional
 
 ```{r g1, fig.align='center', out.width='78%', fig.cap="Distribución de ocupados por categoría ocupacional. EPH 4T2025."}
-knitr::include_graphics("graficos/g1_cat_ocup.png")
+ggplot(tabla_cat, aes(x = reorder(Cat_ocupacional, Porcentaje), y = Porcentaje)) +
+  geom_col(fill = col_azul) +
+  geom_text(aes(label = paste0(Porcentaje, "%")), hjust = -0.1, size = 3.5) +
+  coord_flip() +
+  scale_y_continuous(limits = c(0, 80)) +
+  labs(title = "Distribución por categoría ocupacional",
+       subtitle = "Ocupados – EPH 4T2025",
+       x = NULL, y = "Porcentaje (%)") +
+  theme_minimal()
 ```
 
 La categoría predominante es la de **asalariados**, que concentra al `r tabla_cat %>% filter(Cat_ocupacional == "Asalariado") %>% pull(Porcentaje)`% de los ocupados. El `r tabla_cat %>% filter(Cat_ocupacional == "Cuenta propia") %>% pull(Porcentaje)`% trabaja por cuenta propia, mientras que los patrones o empleadores representan el `r tabla_cat %>% filter(Cat_ocupacional == "Patrón/empleador") %>% pull(Porcentaje)`%.
@@ -81,7 +99,20 @@ La categoría predominante es la de **asalariados**, que concentra al `r tabla_c
 ### Formalidad laboral
 
 ```{r g2, fig.align='center', out.width='52%', fig.cap="Distribución por condición de formalidad laboral (sobre casos con dato). EPH 4T2025."}
-knitr::include_graphics("graficos/g2_formalidad.png")
+tabla_form_pie <- tabla_form %>%
+  filter(Formalidad != "Sin dato") %>%
+  mutate(Porcentaje = round(n / sum(n) * 100, 1))
+
+ggplot(tabla_form_pie, aes(x = "", y = Porcentaje, fill = Formalidad)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar("y", start = 0) +
+  geom_text(aes(label = paste0(Porcentaje, "%")),
+            position = position_stack(vjust = 0.5), size = 5) +
+  scale_fill_manual(values = c("Formal" = col_azul, "Informal" = col_rojo)) +
+  labs(title = "Distribución por condición de formalidad laboral",
+       subtitle = "Ocupados – EPH 4T2025",
+       fill = NULL) +
+  theme_void()
 ```
 
 Entre los ocupados con dato de formalidad, el **`r tabla_form_valida %>% filter(Formalidad == "Formal") %>% pull(Pct)`% son trabajadores formales** y el `r tabla_form_valida %>% filter(Formalidad == "Informal") %>% pull(Pct)`% son informales.
@@ -89,7 +120,32 @@ Entre los ocupados con dato de formalidad, el **`r tabla_form_valida %>% filter(
 ### Ingreso mensual de la ocupación principal
 
 ```{r g3, fig.align='center', out.width='100%', fig.cap="Distribución del ingreso mensual según categoría ocupacional. Se excluye el 1\\% superior. EPH 4T2025."}
-knitr::include_graphics("graficos/g3_ingreso_catocup.png")
+stats_g3 <- datos_ingreso %>%
+  group_by(Cat_ocupacional) %>%
+  summarise(
+    Min = quantile(Ingreso_mensual_ARS, 0.00),
+    Q1 = quantile(Ingreso_mensual_ARS, 0.25),
+    Mediana = quantile(Ingreso_mensual_ARS, 0.50),
+    Q3 = quantile(Ingreso_mensual_ARS, 0.75),
+    Max = quantile(Ingreso_mensual_ARS, 0.99)
+  ) %>%
+  pivot_longer(-Cat_ocupacional, names_to = "stat", values_to = "valor")
+
+ggplot(datos_ingreso, aes(x = Cat_ocupacional, y = Ingreso_mensual_ARS, fill = Cat_ocupacional)) +
+  geom_boxplot(outlier.alpha = 0.15, outlier.size = 0.6) +
+  geom_text(data = stats_g3,
+            aes(x = Cat_ocupacional, y = valor,
+                label = format(round(valor), big.mark = ".", scientific = FALSE)),
+            hjust = -0.05, nudge_x = 0.42, size = 2.2, inherit.aes = FALSE) +
+  scale_y_continuous(labels = function(x) format(x, big.mark = ".", scientific = FALSE),
+                     limits = c(0, quantile(datos_ingreso$Ingreso_mensual_ARS, 0.99))) +
+  scale_fill_manual(values = paleta_4) +
+  labs(title = "Ingreso de la ocupación principal según categoría ocupacional",
+       subtitle = "Se excluye el 1% superior – EPH 4T2025",
+       x = NULL, y = "Ingreso (pesos)") +
+  theme_minimal() +
+  theme(legend.position = "none",
+        axis.text.x = element_text(angle = 15, hjust = 1))
 ```
 
 La distribución del ingreso es **fuertemente asimétrica hacia la derecha** (coeficiente de asimetría = `r round(skew(datos_ingreso$Ingreso_mensual_ARS), 2)`): la media (`r pesos(mean(datos_ingreso$Ingreso_mensual_ARS))`) supera ampliamente a la mediana (`r pesos(median(datos_ingreso$Ingreso_mensual_ARS))`), evidenciando valores atípicos elevados. La mitad de los ocupados percibió menos de `r pesos(median(datos_ingreso$Ingreso_mensual_ARS))` mensuales. El coeficiente de variación del `r round(100 * sd(datos_ingreso$Ingreso_mensual_ARS) / mean(datos_ingreso$Ingreso_mensual_ARS), 1)`% refleja una alta dispersión. Los patrones registran la mediana más alta (`r pesos(med_cat %>% filter(Cat_ocupacional=="Patrón/empleador") %>% pull(Mediana))`), mientras que los cuentapropistas presentan los valores más bajos (`r pesos(med_cat %>% filter(Cat_ocupacional=="Cuenta propia") %>% pull(Mediana))`).
@@ -97,7 +153,17 @@ La distribución del ingreso es **fuertemente asimétrica hacia la derecha** (co
 ### Horas semanales trabajadas
 
 ```{r g5, fig.align='center', out.width='75%', fig.cap="Distribución de horas semanales trabajadas en la ocupación principal. EPH 4T2025."}
-knitr::include_graphics("graficos/g5_horas.png")
+ggplot(datos, aes(x = Horas_semanales)) +
+  geom_histogram(binwidth = 4, fill = col_azul, color = "white") +
+  geom_vline(xintercept = mean(datos$Horas_semanales), color = col_rojo,
+             linetype = "dashed", linewidth = 0.8) +
+  annotate("text", x = mean(datos$Horas_semanales) + 1, y = Inf,
+           label = paste0("Media: ", round(mean(datos$Horas_semanales), 1), " hs"),
+           vjust = 2, hjust = 0, color = col_rojo, size = 3.5) +
+  labs(title = "Distribución de horas semanales trabajadas",
+       subtitle = "Ocupación principal – EPH 4T2025",
+       x = "Horas semanales", y = "Frecuencia") +
+  theme_minimal()
 ```
 
 La distribución de horas semanales es **levemente asimétrica hacia la izquierda** (coeficiente de asimetría = `r round(skew(datos$Horas_semanales), 2)`). La mitad de los ocupados trabaja `r median(datos$Horas_semanales)` horas o más por semana; la concentración en torno a las 40 horas es consistente con la jornada laboral legal. El coeficiente de variación del `r round(100 * sd(datos$Horas_semanales) / mean(datos$Horas_semanales), 1)`% indica menor dispersión que la variable de ingresos.
@@ -107,7 +173,7 @@ La distribución de horas semanales es **levemente asimétrica hacia la izquierd
 **a)** Se utiliza la **categoría ocupacional** como variable de agrupamiento para profundizar en el impacto de la estructura laboral sobre la distribución de ingresos en Argentina. El análisis inferencial se centra en los tres grupos principales que perciben ingresos por su actividad: Patrón/ Empleador, Asalariado y Cuenta Propia. Se excluyen del análisis a los Trabajadores familiares sin remuneración, cuya proporción es marginal (0.5%).
 Comparar las medias de los ingresos de estos grupos permite evaluar los niveles de precarización, concentración del ingreso y desigualdad en el tejido socioeconómico actual.
 
-**b)** Para cada grupo $i$ el parámetro de interés es la **media del ingreso mensual** ($\mu_i$): $\mu_1$ para patrones/empleadores, $\mu_2$ para cuentapropistas y $\mu_3$ para asalariados. El desvío estándar poblacional es desconocido, por lo que se aplica la distribución $t_{n_i-1}$. Los tamaños de grupo $\n_i$ superan los `r min(ic_ingreso$n)` casos, garantizando la validez del Teorema Central del Límite aun con la distribución asimétrica del ingreso.
+**b)** Para cada grupo $i$ el parámetro de interés es la **media del ingreso mensual** ($\mu_i$): $\mu_1$ para patrones/empleadores, $\mu_2$ para cuentapropistas y $\mu_3$ para asalariados. El desvío estándar poblacional es desconocido, por lo que se aplica la distribución $t_{n_i-1}$. Los tamaños de grupo $n_i$ superan los `r min(ic_ingreso$n)` casos, garantizando la validez del Teorema Central del Límite aun con la distribución asimétrica del ingreso.
 
 **c)** Los intervalos de confianza al 95 % son:
 
@@ -125,7 +191,20 @@ knitr::kable(
 ```
 
 ```{r g6, fig.align='center', out.width='82%', fig.cap="IC 95\\% para la media del ingreso mensual por categoría ocupacional. EPH 4T2025."}
-knitr::include_graphics("graficos/g6_ic_ingreso.png")
+ggplot(ic_ingreso, aes(x = reorder(Cat_ocupacional, media),
+                       y = media, color = Cat_ocupacional)) +
+  geom_point(size = 4) +
+  geom_errorbar(aes(ymin = LI, ymax = LS), width = 0.25, linewidth = 1) +
+  geom_text(aes(label = format(media, big.mark = ".", scientific = FALSE)),
+            vjust = -1.2, size = 3.5) +
+  coord_flip() +
+  scale_y_continuous(labels = function(x) format(x, big.mark = ".", scientific = FALSE)) +
+  scale_color_manual(values = paleta_4[1:3]) +
+  labs(title = "IC 95% para la media del ingreso mensual",
+       subtitle = "Por categoría ocupacional – EPH 4T2025",
+       x = NULL, y = "Ingreso mensual (pesos)") +
+  theme_minimal() +
+  theme(legend.position = "none")
 ```
 
 Con un nivel de confianza del 95% se estima que la media real de los ingresos mensuales de los patrones se sitúa entre $1.685.000 y $2.025.000. Con el mismo criterio, el verdadero promedio de los ingresos del sector asalariado se encuentra entre $935.000 y $984.000, mientras que la media poblacional de los trabajadores por cuenta propia se ubica en el rango de los $715.000 a los $770.000. 
@@ -135,3 +214,6 @@ Con un nivel de confianza del 95% se estima que la media real de los ingresos me
 La falta de superposición visual y numérica entre los tres intervalos calculados ratifica una severa segmentación estructural en la distribución de la riqueza. Los empleadores consolidan una posición económica superior que duplica la remuneración de los asalariados y casi triplica la del autoempleo. Este comportamiento se comprende al relacionarlo con el análisis descriptivo del informe, donde se ve que la tasa de informalidad general alcanza el 44.9%, provocando que la mitad de la masa laboral precarizada perciba un ingreso medio de apenas $400.000 o menos. 
 
 Dado que los resultados provienen de una muestra probabilística representativa de los aglomerados urbanos, **las conclusiones son de carácter preliminar**: los estadísticos calculados estiman los parámetros poblacionales con un margen de error asociado al diseño muestral de la EPH.
+
+
+### Fuente: https://www.indec.gob.ar/indec/web/Institucional-Indec-BasesDeDatos-1
